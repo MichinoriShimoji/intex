@@ -840,7 +840,6 @@
             const lines = text.split('\n');
             
             examples = [];
-            let currentExample = null;
             let lineIndex = 0;
             
             while (lineIndex < lines.length) {
@@ -849,101 +848,68 @@
                 // 例文番号の検出
                 const numberMatch = line.match(/^\((\d+)\)$/);
                 if (numberMatch) {
-                    // 前の例文を保存
-                    if (currentExample && currentExample.original) {
-                        examples.push(currentExample);
-                    }
-                    
-                    // 新しい例文を開始
                     const id = parseInt(numberMatch[1]);
-                    currentExample = {
+                    const currentExample = {
                         id: id,
                         original: '',
                         gloss: '',
                         japanese: ''
                     };
                     
+                    // 次の行から内容を収集
+                    const contentLines = [];
                     lineIndex++;
                     
-                    // 原文を探す
+                    // 次の例文番号が来るまで、または空行が連続するまで行を収集
                     while (lineIndex < lines.length) {
                         const nextLine = lines[lineIndex].trim();
-                        if (!nextLine) {
-                            lineIndex++;
-                            continue;
-                        }
+                        
+                        // 次の例文番号に到達したら終了
                         if (nextLine.match(/^\((\d+)\)$/)) {
-                            // 次の例文番号に到達
-                            lineIndex--;
                             break;
                         }
-                        if (!nextLine.match(/^[A-Z]+[\.\s]/)) {
-                            // 原文（グロスではない行）
-                            currentExample.original = nextLine;
-                            lineIndex++;
-                            break;
+                        
+                        // 空行はスキップするが、収集は続ける
+                        if (nextLine) {
+                            contentLines.push(nextLine);
                         }
+                        
                         lineIndex++;
                     }
                     
-                    // グロスを探す
-                    while (lineIndex < lines.length) {
-                        const nextLine = lines[lineIndex].trim();
-                        if (!nextLine) {
-                            lineIndex++;
-                            continue;
-                        }
-                        if (nextLine.match(/^\((\d+)\)$/)) {
-                            // 次の例文番号に到達
-                            lineIndex--;
-                            break;
-                        }
-                        if (nextLine.match(/[A-Z]+[\.\s]/) || nextLine.match(/^[A-Z]{2,}/)) {
-                            // グロス行
-                            currentExample.gloss = nextLine;
-                            lineIndex++;
-                            break;
-                        }
-                        lineIndex++;
-                    }
-                    
-                    // 日本語訳を探す（日本語が含まれる行）
-                    while (lineIndex < lines.length) {
-                        const nextLine = lines[lineIndex].trim();
-                        if (!nextLine) {
-                            lineIndex++;
-                            continue;
-                        }
-                        if (nextLine.match(/^\((\d+)\)$/)) {
-                            // 次の例文番号に到達
-                            lineIndex--;
-                            break;
-                        }
-                        if (nextLine.match(/[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/)) {
-                            // 日本語を含む行
-                            currentExample.japanese = nextLine;
-                            lineIndex++;
-                            // 複数行の日本語訳の場合、続きを取得
-                            while (lineIndex < lines.length) {
-                                const continueLine = lines[lineIndex].trim();
-                                if (!continueLine || continueLine.match(/^\((\d+)\)$/) || !continueLine.match(/[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/)) {
-                                    break;
-                                }
-                                currentExample.japanese += continueLine;
-                                lineIndex++;
+                    // 収集した行数に基づいて形式を判定
+                    if (contentLines.length === 2) {
+                        // 2行形式: 例文、日本語訳
+                        currentExample.original = contentLines[0];
+                        currentExample.japanese = contentLines[1];
+                        currentExample.gloss = ''; // グロスなし
+                    } else if (contentLines.length === 3) {
+                        // 3行形式: 原文、グロス、日本語訳
+                        currentExample.original = contentLines[0];
+                        currentExample.gloss = contentLines[1];
+                        currentExample.japanese = contentLines[2];
+                    } else if (contentLines.length >= 4) {
+                        // 4行形式: スペースあり例文、形態素境界入り例文、グロス、日本語訳
+                        currentExample.originalSpaced = contentLines[0]; // スペースあり例文
+                        currentExample.original = contentLines[1]; // 形態素境界入り例文
+                        currentExample.gloss = contentLines[2];
+                        currentExample.japanese = contentLines[3];
+                        
+                        // 日本語訳が複数行にわたる場合は結合
+                        for (let i = 4; i < contentLines.length; i++) {
+                            if (contentLines[i].match(/[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/)) {
+                                currentExample.japanese += contentLines[i];
                             }
-                            break;
                         }
-                        lineIndex++;
+                    }
+                    
+                    // 例文を追加
+                    if (currentExample.original) {
+                        examples.push(currentExample);
                     }
                 } else {
                     lineIndex++;
                 }
-            }
-            
-            // 最後の例文を保存
-            if (currentExample && currentExample.original) {
-                examples.push(currentExample);
             }
             
             console.log(`テキストファイルから${examples.length}個の例文を抽出しました`);
@@ -1105,7 +1071,14 @@
             div.dataset.id = example.id;
             
             // インターリニア形式で表示
-            const interlinearHTML = createInterlinearHTML(example.original, example.gloss);
+            let interlinearHTML;
+            if (example.originalSpaced) {
+                // 4行形式の場合
+                interlinearHTML = createInterlinearHTML4Line(example.originalSpaced, example.original, example.gloss);
+            } else {
+                // 2行または3行形式の場合
+                interlinearHTML = createInterlinearHTML(example.original, example.gloss);
+            }
             
             div.innerHTML = `
                 <div class="example-number">(${example.id})</div>
@@ -1145,6 +1118,35 @@
                 html += `
                     <div class="word-group">
                         <div class="original-word">${originalWord}</div>
+                        <div class="gloss-word">${clickableGloss}</div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        // 4行形式のインターリニアHTMLを生成
+        function createInterlinearHTML4Line(spacedText, boundaryText, glossText) {
+            const spacedWords = spacedText.split(/\s+/);
+            const boundaryWords = boundaryText.split(/\s+/);
+            const glossWords = glossText.split(/\s+/);
+            
+            let html = '<div class="interlinear-row">';
+            
+            for (let i = 0; i < Math.max(spacedWords.length, boundaryWords.length, glossWords.length); i++) {
+                const spacedWord = spacedWords[i] || '';
+                const boundaryWord = boundaryWords[i] || '';
+                const glossWord = glossWords[i] || '';
+                
+                // グロスをクリック可能にする
+                const clickableGloss = makeGlossClickable(glossWord);
+                
+                html += `
+                    <div class="word-group">
+                        <div class="original-word">${spacedWord}</div>
+                        <div class="original-word" style="font-size: 16px; color: #444; font-weight: normal;">${boundaryWord}</div>
                         <div class="gloss-word">${clickableGloss}</div>
                     </div>
                 `;
