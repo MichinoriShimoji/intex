@@ -179,7 +179,7 @@
             gap: 20px;
         }
         
-        .play-all-button {
+        .play-all-button, .download-button {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
@@ -195,16 +195,25 @@
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         
-        .play-all-button:hover {
+        .download-button {
+            background: linear-gradient(135deg, #FF6B6B 0%, #C44569 100%);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .play-all-button:hover, .download-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .download-button:hover {
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
         }
         
         .play-all-button.playing {
             background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
         }
         
-        .play-all-button .button-icon {
+        .play-all-button .button-icon, .download-button .button-icon {
             font-size: 20px;
         }
         
@@ -579,6 +588,10 @@
                     <span class="button-icon">▶</span>
                     <span class="button-text">全体音声を再生</span>
                 </button>
+                <button id="downloadBtn" class="download-button">
+                    <span class="button-icon">⬇</span>
+                    <span class="button-text">HTMLをダウンロード</span>
+                </button>
             </div>
             
             <div class="example-list" id="exampleList">
@@ -702,14 +715,22 @@
         // イベントリスナーの設定
         function setupEventListeners() {
             // ファイル選択時の処理
-            document.getElementById('dataFile').addEventListener('change', checkFiles);
-            document.getElementById('urlFile').addEventListener('change', checkFiles);
+            const dataFile = document.getElementById('dataFile');
+            const urlFile = document.getElementById('urlFile');
+            if (dataFile) dataFile.addEventListener('change', checkFiles);
+            if (urlFile) urlFile.addEventListener('change', checkFiles);
             
             // 処理ボタンのクリック
-            document.getElementById('processButton').addEventListener('click', processFiles);
+            const processButton = document.getElementById('processButton');
+            if (processButton) processButton.addEventListener('click', processFiles);
             
             // 全体音声再生ボタン
-            document.getElementById('playAllBtn').addEventListener('click', playFullAudio);
+            const playAllBtn = document.getElementById('playAllBtn');
+            if (playAllBtn) playAllBtn.addEventListener('click', playFullAudio);
+            
+            // ダウンロードボタンのクリック
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) downloadBtn.addEventListener('click', downloadHTML);
             
             // グロスクリックイベント
             document.addEventListener('click', function(e) {
@@ -724,11 +745,13 @@
             
             // 音声終了時の処理
             const audio = document.getElementById('audio');
-            audio.addEventListener('ended', function() {
-                updatePlayingState(null);
-            });
-            
-            audio.addEventListener('timeupdate', updateProgress);
+            if (audio) {
+                audio.addEventListener('ended', function() {
+                    updatePlayingState(null);
+                });
+                
+                audio.addEventListener('timeupdate', updateProgress);
+            }
         }
         
         // ファイルが選択されているかチェック
@@ -1427,6 +1450,143 @@
                     statusMessage.className = 'status-message';
                 }, 5000);
             }
+        }
+        
+        // HTMLをダウンロード
+        function downloadHTML() {
+            // 現在のページのHTMLをクローン
+            const htmlClone = document.documentElement.cloneNode(true);
+            
+            // アップロードセクションを削除
+            const uploadSection = htmlClone.querySelector('#uploadSection');
+            if (uploadSection) {
+                uploadSection.remove();
+            }
+            
+            // コンテンツセクションを表示
+            const contentSection = htmlClone.querySelector('#contentSection');
+            if (contentSection) {
+                contentSection.style.display = 'block';
+            }
+            
+            // 例文リストをクリア（JavaScriptで再生成するため）
+            const exampleList = htmlClone.querySelector('#exampleList');
+            if (exampleList) {
+                exampleList.innerHTML = '';
+            }
+            
+            // スクリプトタグを探す
+            const scripts = htmlClone.getElementsByTagName('script');
+            let mainScript = null;
+            
+            for (let script of scripts) {
+                if (script.textContent.includes('let examples = []')) {
+                    mainScript = script;
+                    break;
+                }
+            }
+            
+            if (mainScript) {
+                // 現在のデータを埋め込むための新しいスクリプトを作成
+                const dataScript = document.createElement('script');
+                dataScript.textContent = `
+                    // 埋め込まれたデータ
+                    window.embeddedData = {
+                        examples: ${JSON.stringify(examples)},
+                        audioUrls: ${JSON.stringify(audioUrls)},
+                        fullAudioUrl: ${JSON.stringify(fullAudioUrl)}
+                    };
+                `;
+                
+                // メインスクリプトの前にデータスクリプトを挿入
+                mainScript.parentNode.insertBefore(dataScript, mainScript);
+                
+                // メインスクリプトの内容を修正
+                let scriptContent = mainScript.textContent;
+                
+                // processFiles関数を修正（埋め込まれたデータを使用するバージョン）
+                const modifiedProcessFiles = `
+        // ファイルを処理（埋め込みデータ版）
+        async function processFiles() {
+            // 埋め込まれたデータをチェック
+            if (window.embeddedData) {
+                examples = window.embeddedData.examples;
+                audioUrls = window.embeddedData.audioUrls;
+                fullAudioUrl = window.embeddedData.fullAudioUrl;
+                
+                console.log('埋め込まれたデータを使用します');
+                console.log(\`例文数: \${examples.length}\`);
+                console.log(\`音声URL数: \${audioUrls.length}\`);
+                
+                // コンテンツを表示
+                displayContent();
+                
+                // アップロードセクションを非表示
+                const uploadSection = document.getElementById('uploadSection');
+                if (uploadSection) {
+                    uploadSection.style.display = 'none';
+                }
+                document.getElementById('contentSection').style.display = 'block';
+                
+                return;
+            }
+            
+            // 元のprocessFiles関数のコード
+            `;
+                
+                // processFiles関数を置き換え
+                scriptContent = scriptContent.replace(
+                    /async function processFiles\(\) {/,
+                    modifiedProcessFiles
+                );
+                
+                // DOMContentLoaded時に埋め込みデータをチェック
+                const initCode = `
+        // DOMの読み込み完了後に初期化
+        window.addEventListener('DOMContentLoaded', function() {
+            setupEventListeners();
+            
+            // 埋め込みデータがある場合は自動的に処理
+            if (window.embeddedData) {
+                processFiles();
+            }
+        });`;
+                
+                scriptContent = scriptContent.replace(
+                    /\/\/ DOMの読み込み完了後に初期化[\s\S]*?}\);/,
+                    initCode
+                );
+                
+                mainScript.textContent = scriptContent;
+            }
+            
+            // HTMLを文字列に変換
+            const htmlContent = '<!DOCTYPE html>\n' + htmlClone.outerHTML;
+            
+            // Blobを作成
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            
+            // ダウンロードリンクを作成
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            
+            // ファイル名を設定（タイトルが設定されている場合はそれを使用）
+            const pageTitle = document.getElementById('pageTitle').textContent;
+            const fileName = pageTitle !== 'グロス付きテキストビューア' 
+                ? `${pageTitle}.html` 
+                : 'intex_output.html';
+            
+            downloadLink.download = fileName;
+            
+            // リンクをクリックしてダウンロードを開始
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // メモリを解放
+            URL.revokeObjectURL(downloadLink.href);
+            
+            showStatus('HTMLファイルのダウンロードを開始しました', 'success');
         }
     </script>
 </body>
