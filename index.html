@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Intex: Interactive text viwer for fieldworkers</title>
+    <title>InTEx: Interactive TExt gallery </title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
@@ -631,80 +631,175 @@
         let currentlyPlaying = null;
         let useCorsProxy = true; // CORSプロキシを使用するかどうか
         
-        // グロスの和訳辞書（SearchGlossベース）
+        // グロスの和訳辞書（SearchGlossベース - 拡張版）
         const glossDictionary = {
-            'foc': '焦点',
-            'gen': '属格',
-            'com': '共格',
-            'quot': '引用',
-            'cop': 'コピュラ',
-            'pst': '過去',
-            'hs': '伝聞',
-            'fil': 'フィラー',
-            'all': '向格',
-            'q': '疑問',
-            'dsc': '談話標識',
-            'thm': 'テーマ',
-            'csl': '理由',
-            'acc': '対格',
-            'imp': '命令',
-            'seq': '継起',
-            'cvlz': '使役化',
-            'acc2': '対格2',
-            'crcm': '状況',
+            // 格標識
             'nom': '主格',
-            'ant': '先行',
-            'top': '主題',
-            'pot': '可能',
-            'neg': '否定',
-            'ben': '受益',
-            'hon': '敬語',
-            'npst': '非過去',
-            'inf': '中止',
-            'caus': '使役',
-            'prog': '進行',
-            'cnf': '確認',
-            'clf': '類別詞',
-            'add': '添加',
+            'gen': '属格',
+            'acc': '対格',
             'dat': '与格',
-            'vlz': '動詞化',
-            'voc': '呼格',
-            'otop': '対比主題',
-            'refl': '再帰',
-            'sg': '単数',
-            'pl': '複数',
-            'int': '意志',
-            'dim': '指小辞',
-            'cond': '条件',
-            'asr': '断定',
-            'pros': '推測',
-            'cnlz': '名詞化',
-            'pass': '受身',
-            'dub': '推量',
-            'ins': '具格',
-            'cnc': '逆接',
-            'incl': '包括',
-            'prox': '近称',
-            'chs': '推定',
-            'indf': '不定',
             'abl': '奪格',
-            'rsl': '結果',
+            'ins': '具格',
+            'com': '共格',
+            'all': '向格',
+            'loc': '所格',
+            'voc': '呼格',
+            
+            // 格の変種
             'nom1': '主格1',
             'nom2': '主格2',
+            'gen1': '属格1',
             'gen2': '属格2',
-            'adj': '形容詞',
-            'nlz': '名詞化',
-            'dfut': '遠い未来',
-            'rfl': '再帰',
-            'onm': 'オノマトペ',
             'acc1': '対格1',
+            'acc2': '対格2',
+            
+            // 時制・アスペクト
+            'pst': '過去',
+            'npst': '非過去',
+            'prs': '現在',
+            'fut': '未来',
+            'dfut': '遠い未来',
+            'prog': '進行',
+            'perf': '完了',
+            'ipfv': '未完了',
+            'pfv': '完了',
+            
+            // モダリティ
+            'pot': '可能',
+            'dub': '推量',
+            'pros': '推測',
+            'seem': '推測',
+            'chs': '推定',
+            'hs': '伝聞',
+            'asr': '断定',
+            'cnf': '確認',
+            'q': '疑問',
+            
+            // 法
+            'imp': '命令',
+            'proh': '禁止',
+            'opt': '希求',
+            'int': '意志',
+            'hort': '勧誘',
+            'cond': '条件',
+            
+            // 態
+            'pass': '受身',
+            'caus': '使役',
+            'cvlz': '使役化',
+            'refl': '再帰',
+            'rfl': '再帰',
+            'recip': '相互',
+            
+            // 談話機能
+            'top': '主題',
+            'foc': '焦点',
+            'otop': '対比主題',
+            'thm': 'テーマ',
+            'quot': '引用',
+            'dsc': '談話標識',
+            'fil': 'フィラー',
+            
+            // 数・人称
+            'sg': '単数',
+            'pl': '複数',
+            'du': '双数',
+            '1': '1人称',
+            '2': '2人称',
+            '3': '3人称',
+            'incl': '包括',
+            'excl': '除外',
+            
+            // 敬語
+            'hon': '敬語',
+            'hum': '謙譲',
+            'pol': '丁寧',
+            'adr': '敬語',
+            
+            // 接続
+            'seq': '継起',
+            'sim': '同時',
+            'ant': '先行',
+            'csl': '理由',
+            'rsl': '結果',
+            'cnc': '逆接',
+            'add': '添加',
+            
+            // 派生
+            'nlz': '名詞化',
+            'cnlz': '名詞化',
+            'vlz': '動詞化',
+            'adj': '形容詞',
+            'adv': '副詞',
+            
+            // その他
+            'neg': '否定',
+            'cop': 'コピュラ',
+            'lv': '軽動詞',
+            'aux': '助動詞',
+            'clf': '類別詞',
+            'dim': '指小辞',
+            'aug': '増大辞',
+            'ben': '受益',
+            'mal': '被害',
+            'inf': '中止',
+            'cvb': '副動詞',
+            'ptcp': '分詞',
+            'ger': '動名詞',
+            
+            // 指示
+            'prox': '近称',
+            'med': '中称',
+            'dist': '遠称',
+            'indf': '不定',
+            
+            // 限定
             'aprx': '近似',
             'lmt': '限界',
-            'sim': '同時',
-            'lv': '軽動詞',
-            'proh': '禁止',
-            'adr': '敬語',
-            'seem': '推測'
+            'only': '限定',
+            'also': 'も',
+            'even': 'さえ',
+            
+            // その他の機能
+            'crcm': '状況',
+            'onm': 'オノマトペ',
+            'intj': '間投詞',
+            'conn': '接続詞',
+            'prt': '助詞',
+            'post': '後置詞',
+            'prep': '前置詞',
+            
+            // 方言特有のグロス（必要に応じて追加）
+            'evid': '証拠性',
+            'mir': '意外性',
+            'exp': '経験',
+            'hab': '習慣',
+            'iter': '反復',
+            'sem': '瞬間',
+            'tel': '完成',
+            'atel': '非完成',
+            'inch': '起動',
+            'term': '終結',
+            'cont': '継続',
+            'punc': '瞬時',
+            'dur': '持続',
+            'freq': '頻度',
+            'distr': '配分',
+            'coll': '集合',
+            'assoc': '随伴',
+            'priv': '欠如',
+            'poss': '所有',
+            'part': '部分',
+            'temp': '時',
+            'mann': '様態',
+            'purp': '目的',
+            'inst': '道具',
+            'conc': '譲歩',
+            'comp': '比較',
+            'super': '最上級',
+            'equ': '同等',
+            'sim': '類似',
+            'diff': '相違'
         };
         
         // DOMの読み込み完了後に初期化
@@ -733,11 +828,11 @@
             if (downloadBtn) downloadBtn.addEventListener('click', downloadHTML);
             
             // グロスクリックイベント
-            document.addEventListener('click', function(e) {
+            document.addEventListener('click', async function(e) {
                 if (e.target.classList.contains('gloss-clickable')) {
                     e.stopPropagation();
                     const gloss = e.target.dataset.gloss;
-                    showGlossTooltip(gloss, e.target);
+                    await showGlossTooltip(gloss, e.target);
                 } else if (!e.target.closest('.gloss-tooltip')) {
                     hideGlossTooltip();
                 }
@@ -1381,13 +1476,13 @@
         }
         
         // グロスの吹き出しを表示
-        function showGlossTooltip(gloss, element) {
+        async function showGlossTooltip(gloss, element) {
             const tooltip = document.getElementById('glossTooltip');
             const glossTitle = document.getElementById('glossTitle');
             const glossDescription = document.getElementById('glossDescription');
             
             // グロスの翻訳を取得
-            const translation = getGlossTranslation(gloss);
+            const translation = await getGlossTranslation(gloss);
             
             glossTitle.textContent = gloss.toUpperCase();
             glossDescription.textContent = translation;
@@ -1418,9 +1513,11 @@
         }
         
         // 複合グロスを解析して説明を生成
-        function getGlossTranslation(gloss) {
+        async function getGlossTranslation(gloss) {
+            // 内蔵辞書から検索
             const parts = gloss.toLowerCase().split('.');
             const translations = [];
+            let allFound = true;
             
             for (const part of parts) {
                 if (glossDictionary[part]) {
@@ -1428,8 +1525,15 @@
                 } else if (part.match(/^\d+$/)) {
                     translations.push(part + '人称');
                 } else {
+                    // 辞書に見つからない場合
+                    allFound = false;
                     translations.push(part.toUpperCase());
                 }
+            }
+            
+            if (!allFound) {
+                // 一つでも見つからないグロスがあった場合
+                return 'SearchGlossになし';
             }
             
             if (translations.length > 1) {
@@ -1437,8 +1541,14 @@
             } else if (translations.length === 1) {
                 return translations[0];
             } else {
-                return '不明';
+                return 'SearchGlossになし';
             }
+        }
+        
+        // SearchGlossからデータを取得（現在は使用しない）
+        async function fetchFromSearchGloss(gloss) {
+            // 将来的にオンラインのSearchGlossと連携する場合のプレースホルダー
+            return null;
         }
         
         // ステータスメッセージを表示
